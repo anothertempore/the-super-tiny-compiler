@@ -1,21 +1,6 @@
-// Most compilers break down into three primary stages:
-// Parsing, Transformation, and Code Generation.
-
-// 1. Parsing: raw code --> a more abstract representation of code
-// 2. Transformation: abstract code --> maniplulate it to transformed code
-// 3. Code Generation: transformed code --> new code
-
-// ====== Parsing ======
-// Parsing breaks down into two phases:
-// Lexical Analysis, and Syntactic Analysis
-
-// 1. Lexical Analysis: row code --> tokens(an array of objects that describe syntax)
-// 2. Syntactic Analysis: tokens --> Abstract Syntax Tree(a deeply nested object that describe each of syntax and their relations)
-
-// ====== Transformation ======
-// Transform AST to another one
-
-// ====== Code Generation ======
+// 1. Parsing: raw code --> tokens --> AST
+// 2. Transformation: AST --> new AST
+// 3. Code Generation: new AST --> new code
 
 /**
  * Raw code --> tokens
@@ -294,8 +279,8 @@ function traverser(ast, visitor) {
 }
 
 /**
- * AST --> New AST
- * @param ast
+ * old AST --> New AST
+ * @param ast old AST
  */
 function transformer(ast) {
   let newAst = {
@@ -345,11 +330,44 @@ function transformer(ast) {
   return newAst;
 }
 
-function compiler() {
-  const tokens = tokenizer("(add 2 (subtract 4 2))");
-  const ast = parser(tokens);
-  const newAst = transformer(ast);
-  console.log(JSON.stringify(newAst));
+/**
+ * new AST --> new code
+ * @param node AST
+ * @returns new code
+ */
+function codeGenerator(node) {
+  switch (node.type) {
+    case "Program":
+      return node.body.map(codeGenerator).join("\n");
+    case "ExpressionStatement":
+      return codeGenerator(node.expression) + ";";
+    case "CallExpression":
+      return (
+        codeGenerator(node.callee) +
+        "(" +
+        node.arguments.map(codeGenerator).join(", ") +
+        ")"
+      );
+    case "Identifier":
+      return node.name;
+    case "NumberLiteral":
+      return node.value;
+    case "StringLiteral":
+      return '"' + node.value + '"';
+    default:
+      throw new TypeError(node.type);
+  }
 }
 
-compiler();
+function compiler(input) {
+  const tokens = tokenizer(input);
+  const ast = parser(tokens);
+  const newAst = transformer(ast);
+  const output = codeGenerator(newAst);
+  return output;
+}
+
+const input = "(add 2 (subtract (add 4 2)))";
+console.log("input:", input);
+const output = compiler(input);
+console.log("output:", output);
